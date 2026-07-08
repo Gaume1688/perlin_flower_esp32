@@ -195,14 +195,15 @@ void initFlowerPositions() {
 
 // ============ 获取呼吸因子 ============
 // 根据UDP数据（中心花亮度）计算呼吸强度
+// UDP值越大，呼吸效果越弱；UDP值达到最大时，无呼吸效果
 float getBreathFactor(int index, float t) {
     // 根据中心花亮度计算呼吸强度
-    // 中心花亮度越高，呼吸效果越明显
+    // 中心花亮度越高，呼吸效果越弱
     float brightnessRatio = (float)centerBrightness / (float)BRIGHTNESS_MAX;
     
-    // 呼吸强度 = 基础强度 + (最大强度 - 基础强度) * 亮度比例
-    float breathIntensity = BREATH_BASE_INTENSITY +
-                            (BREATH_MAX_INTENSITY - BREATH_BASE_INTENSITY) * brightnessRatio;
+    // 呼吸强度 = 最大强度 * (1 - 亮度比例)
+    // 当亮度为0时，呼吸强度最大；当亮度最大时，呼吸强度为0
+    float breathIntensity = BREATH_MAX_INTENSITY * (1.0f - brightnessRatio);
     
     // 计算呼吸相位（每朵花有不同的相位偏移）
     float phase = (t / BREATH_PERIOD) * TWO_PI + index * BREATH_PHASE_OFFSET;
@@ -250,6 +251,7 @@ uint8_t calculateFlowerBrightness(int index, float t) {
     }
     
     // 应用呼吸效果
+    // UDP值越大，呼吸效果越弱；UDP值达到最大时，呼吸效果消失
     float breathFactor = getBreathFactor(index, t);
     uint8_t brightness = (uint8_t)(baseBrightness * breathFactor);
     

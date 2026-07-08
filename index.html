@@ -266,7 +266,8 @@
                     • 其余花朵按螺旋方式跟随中心花变化<br>
                     • 距离越远，延迟越大，形成波浪传播效果<br>
                     • 所有花朵保持呼吸灯效果<br>
-                    • 呼吸强度随UDP数据变化：数据越大，呼吸越明显
+                    • <strong>呼吸强度随UDP数据变化：数据越大，呼吸效果越弱</strong><br>
+                    • <strong>当UDP值达到最大(1024)时，呼吸效果完全消失</strong>
                 </p>
             </div>
 
@@ -375,16 +376,17 @@
 
         // 获取呼吸因子
         // 根据UDP数据（中心花亮度）计算呼吸强度
+        // UDP值越大，呼吸效果越弱；UDP值达到最大时，无呼吸效果
         function getBreathFactor(index) {
             const t = (Date.now() - startTime) / 1000;
             
             // 根据中心花亮度计算呼吸强度
-            // 中心花亮度越高，呼吸效果越明显
+            // 中心花亮度越高，呼吸效果越弱
             const brightnessRatio = centerBrightness / CONFIG.BRIGHTNESS_MAX;
             
-            // 呼吸强度 = 基础强度 + (最大强度 - 基础强度) * 亮度比例
-            const breathIntensity = CONFIG.BREATH_BASE_INTENSITY +
-                (CONFIG.BREATH_MAX_INTENSITY - CONFIG.BREATH_BASE_INTENSITY) * brightnessRatio;
+            // 呼吸强度 = 最大强度 * (1 - 亮度比例)
+            // 当亮度为0时，呼吸强度最大；当亮度最大时，呼吸强度为0
+            const breathIntensity = CONFIG.BREATH_MAX_INTENSITY * (1.0 - brightnessRatio);
             
             // 计算呼吸相位（每朵花有不同的相位偏移）
             const phase = (t / CONFIG.BREATH_PERIOD) * Math.PI * 2 + index * CONFIG.BREATH_PHASE_OFFSET;
@@ -433,6 +435,7 @@
             }
 
             // 应用呼吸效果
+            // UDP值越大，呼吸效果越弱；UDP值达到最大时，呼吸效果消失
             const breathFactor = getBreathFactor(index);
             const brightness = baseBrightness * breathFactor;
 
