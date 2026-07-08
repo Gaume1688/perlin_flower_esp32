@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UDP控制花海可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .subtitle {
+            color: #aaa;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            max-width: 1200px;
+        }
+
+        .canvas-wrapper {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 10px;
+        }
+
+        .controls {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 25px;
+            min-width: 280px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #ddd;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        .value-display {
+            min-width: 50px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 14px;
+            color: #4CAF50;
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .info-panel h3 {
+            font-size: 14px;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .flower-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .flower-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .flower-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+        }
+
+        .btn-secondary {
+            background: #555;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #666;
+        }
+
+        .btn-auto {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-auto:hover {
+            background: #1976D2;
+            box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+        }
+
+        .btn-auto.active {
+            background: #FF5722;
+        }
+
+        .btn-auto.active:hover {
+            background: #E64A19;
+            box-shadow: 0 0 15px rgba(255, 87, 34, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <h1>🌸 UDP控制花海可视化</h1>
+    <p class="subtitle">中心花亮度由UDP数据大小控制，其余花朵螺旋跟随</p>
+
+    <div class="container">
+        <div class="canvas-wrapper">
+            <canvas id="flowerCanvas" width="500" height="500"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>📡 模拟UDP数据包大小 (0-1024字节)</label>
+                <div class="slider-container">
+                    <input type="range" id="udpSizeSlider" min="0" max="1024" value="512">
+                    <span class="value-display" id="udpSizeValue">512</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>🌼 中心花亮度 (自动映射)</label>
+                <div class="slider-container">
+                    <input type="range" id="centerSlider" min="20" max="255" value="138" disabled>
+                    <span class="value-display" id="centerValue">138</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>🌀 螺旋传播速度</label>
+                <div class="slider-container">
+                    <input type="range" id="spiralSpeed" min="1" max="100" value="30">
+                    <span class="value-display" id="spiralSpeedValue">0.30</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>💫 亮度平滑系数</label>
+                <div class="slider-container">
+                    <input type="range" id="smoothing" min="5" max="100" value="30">
+                    <span class="value-display" id="smoothingValue">0.30</span>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-primary" id="toggleBtn">暂停</button>
+                <button class="btn-secondary" id="resetBtn">重置</button>
+                <button class="btn-auto" id="autoBtn">自动演示</button>
+            </div>
+
+            <div class="info-panel">
+                <h3>算法说明</h3>
+                <p>
+                    • 中心花亮度由模拟UDP数据包大小控制<br>
+                    • 数据包大小 (0-1024字节) 映射到亮度 (20-255)<br>
+                    • 其余花朵按螺旋方式跟随中心花变化<br>
+                    • 距离越远，延迟越大，形成波浪传播效果<br>
+                    • 所有花朵保持呼吸灯效果<br>
+                    • 呼吸强度随UDP数据变化：数据越大，呼吸越明显
+                </p>
+            </div>
+
+            <div class="info-panel">
+                <h3>花朵亮度</h3>
+                <div class="flower-info" id="flowerInfo">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ 配置参数 ============
+        const CONFIG = {
+            NUM_FLOWERS: 10,
+            CENTER_FLOWER: 0,
+            SPIRAL_B: 1.5,
+            GOLDEN_ANGLE: 2.399,
+            BRIGHTNESS_MIN: 20,
+            BRIGHTNESS_MAX: 255,
+            UDP_PACKET_SIZE_MAX: 1024,
+            SPIRAL_DELAY_FACTOR: 0.15,  // 每单位距离的延迟秒数
+            BRIGHTNESS_SMOOTHING: 0.3,   // 亮度平滑系数
+            HISTORY_UPDATE_INTERVAL: 10, // 历史记录更新间隔 (ms)
+            BREATH_PERIOD: 3.0,          // 呼吸周期（秒）
+            BREATH_BASE_INTENSITY: 0.15, // 呼吸基础强度
+            BREATH_MAX_INTENSITY: 0.8,   // 呼吸最大强度
+            BREATH_PHASE_OFFSET: 0.5     // 每朵花相位偏移（弧度）
+        };
+
+        // ============ 花朵类 ============
+        class Flower {
+            constructor(index) {
+                this.index = index;
+                const theta = index * CONFIG.GOLDEN_ANGLE;
+                const r = CONFIG.SPIRAL_B * theta;
+                this.angle = theta;
+                this.distance = r;
+                this.x = r * Math.cos(theta);
+                this.y = r * Math.sin(theta);
+                this.brightness = CONFIG.BRIGHTNESS_MIN;
+            }
+        }
+
+        // ============ 主程序 ============
+        const canvas = document.getElementById('flowerCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let flowers = [];
+        let startTime = Date.now();
+        let isRunning = true;
+        let isAutoMode = false;
+        
+        // UDP模拟相关变量
+        let udpPacketSize = 512;           // 模拟UDP数据包大小
+        let targetCenterBrightness = CONFIG.BRIGHTNESS_MIN;  // 目标中心花亮度
+        let centerBrightness = CONFIG.BRIGHTNESS_MIN;        // 当前中心花亮度（平滑后）
+        
+        // 亮度历史记录（用于螺旋传播）
+        const BRIGHTNESS_HISTORY_SIZE = 100;
+        let brightnessHistory = new Array(BRIGHTNESS_HISTORY_SIZE).fill(CONFIG.BRIGHTNESS_MIN);
+        let historyIndex = 0;
+        let lastHistoryUpdate = 0;
+        
+        // 控制参数
+        let spiralDelayFactor = CONFIG.SPIRAL_DELAY_FACTOR;
+        let brightnessSmoothing = CONFIG.BRIGHTNESS_SMOOTHING;
+
+        // 初始化花朵
+        function initFlowers() {
+            flowers = [];
+            for (let i = 0; i < CONFIG.NUM_FLOWERS; i++) {
+                flowers.push(new Flower(i));
+            }
+            updateFlowerInfo();
+        }
+
+        // 更新UDP数据包大小（模拟）
+        function updateUDPPacketSize(size) {
+            udpPacketSize = Math.max(0, Math.min(CONFIG.UDP_PACKET_SIZE_MAX, size));
+            // 映射到亮度范围
+            targetCenterBrightness = CONFIG.BRIGHTNESS_MIN +
+                (udpPacketSize / CONFIG.UDP_PACKET_SIZE_MAX) * (CONFIG.BRIGHTNESS_MAX - CONFIG.BRIGHTNESS_MIN);
+            
+            // 更新滑块显示
+            document.getElementById('centerSlider').value = Math.round(targetCenterBrightness);
+            document.getElementById('centerValue').textContent = Math.round(targetCenterBrightness);
+        }
+
+        // 平滑更新中心花亮度
+        function updateCenterBrightnessSmooth() {
+            centerBrightness = centerBrightness * (1 - brightnessSmoothing) +
+                               targetCenterBrightness * brightnessSmoothing;
+        }
+
+        // 更新亮度历史
+        function updateBrightnessHistory() {
+            const now = Date.now();
+            if (now - lastHistoryUpdate >= CONFIG.HISTORY_UPDATE_INTERVAL) {
+                brightnessHistory[historyIndex] = centerBrightness;
+                historyIndex = (historyIndex + 1) % BRIGHTNESS_HISTORY_SIZE;
+                lastHistoryUpdate = now;
+            }
+        }
+
+        // 获取呼吸因子
+        // 根据UDP数据（中心花亮度）计算呼吸强度
+        function getBreathFactor(index) {
+            const t = (Date.now() - startTime) / 1000;
+            
+            // 根据中心花亮度计算呼吸强度
+            // 中心花亮度越高，呼吸效果越明显
+            const brightnessRatio = centerBrightness / CONFIG.BRIGHTNESS_MAX;
+            
+            // 呼吸强度 = 基础强度 + (最大强度 - 基础强度) * 亮度比例
+            const breathIntensity = CONFIG.BREATH_BASE_INTENSITY +
+                (CONFIG.BREATH_MAX_INTENSITY - CONFIG.BREATH_BASE_INTENSITY) * brightnessRatio;
+            
+            // 计算呼吸相位（每朵花有不同的相位偏移）
+            const phase = (t / CONFIG.BREATH_PERIOD) * Math.PI * 2 + index * CONFIG.BREATH_PHASE_OFFSET;
+            
+            // 返回呼吸因子 (0.0 - 1.0)
+            // sin输出范围 -1 到 1，转换为 0 到 1
+            const breathValue = (Math.sin(phase) + 1) / 2;
+            
+            // 根据呼吸强度调整呼吸幅度
+            // 最终呼吸因子范围: (1 - breathIntensity) 到 1.0
+            return 1.0 - breathIntensity + breathValue * breathIntensity;
+        }
+
+        // 计算单朵花的亮度
+        function calculateFlowerBrightness(index) {
+            let baseBrightness;
+
+            if (index === CONFIG.CENTER_FLOWER) {
+                // 中心花：直接使用UDP控制的亮度
+                baseBrightness = centerBrightness;
+            } else {
+                // 其他花：按螺旋方式跟随中心花变化（带延迟）
+                const distance = flowers[index].distance;
+                const maxDistance = (CONFIG.NUM_FLOWERS - 1) * CONFIG.SPIRAL_B * CONFIG.GOLDEN_ANGLE;
+                
+                // 计算延迟（以历史记录的索引为单位）
+                // 根据距离比例计算延迟，确保不超过历史记录大小的一半（留有余量）
+                const maxDelayIndex = Math.floor(BRIGHTNESS_HISTORY_SIZE * 0.5);  // 最大延迟为历史记录的一半
+                const distanceRatio = distance / maxDistance;
+                const delayIndex = Math.floor(distanceRatio * maxDelayIndex * spiralDelayFactor * 10);
+                
+                // 从历史记录中获取延迟后的亮度
+                let delayedIndex = historyIndex - 1 - delayIndex;
+                // 处理循环索引
+                while (delayedIndex < 0) {
+                    delayedIndex += BRIGHTNESS_HISTORY_SIZE;
+                }
+                delayedIndex = delayedIndex % BRIGHTNESS_HISTORY_SIZE;
+                
+                // 获取延迟后的中心花亮度
+                const delayedBrightness = brightnessHistory[delayedIndex];
+                
+                // 添加衰减，让远处的花亮度略低
+                const attenuation = 1.0 - distanceRatio * 0.3;
+                baseBrightness = delayedBrightness * attenuation;
+            }
+
+            // 应用呼吸效果
+            const breathFactor = getBreathFactor(index);
+            const brightness = baseBrightness * breathFactor;
+
+            return Math.max(CONFIG.BRIGHTNESS_MIN, Math.min(CONFIG.BRIGHTNESS_MAX, brightness));
+        }
+
+        // 更新花朵亮度
+        function updateFlowers() {
+            // 平滑更新中心花亮度
+            updateCenterBrightnessSmooth();
+            
+            // 更新亮度历史
+            updateBrightnessHistory();
+            
+            // 计算每朵花的亮度
+            for (let i = 0; i < flowers.length; i++) {
+                flowers[i].brightness = calculateFlowerBrightness(i);
+            }
+        }
+
+        // 绘制花朵
+        function drawFlower(flower, centerX, centerY, scale) {
+            const x = centerX + flower.x * scale;
+            const y = centerY + flower.y * scale;
+            const brightness = flower.brightness;
+            const alpha = brightness / 255;
+            const radius = 8 + (brightness / 255) * 6;
+
+            // 绘制光晕
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius * 2);
+            gradient.addColorStop(0, `rgba(255, 255, 200, ${alpha})`);
+            gradient.addColorStop(0.5, `rgba(255, 255, 150, ${alpha * 0.5})`);
+            gradient.addColorStop(1, 'rgba(255, 255, 100, 0)');
+
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 2, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // 绘制花朵中心
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fill();
+
+            // 绘制花瓣
+            const petalCount = 6;
+            for (let i = 0; i < petalCount; i++) {
+                const angle = (i / petalCount) * Math.PI * 2 + flower.angle;
+                const petalX = x + Math.cos(angle) * radius * 0.8;
+                const petalY = y + Math.sin(angle) * radius * 0.8;
+
+                ctx.beginPath();
+                ctx.arc(petalX, petalY, radius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 220, ${alpha * 0.8})`;
+                ctx.fill();
+            }
+
+            // 绘制花朵索引
+            ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(flower.index, x, y);
+        }
+
+        // 计算合适的缩放比例，让所有花朵都在画布内
+        function calculateScale() {
+            let maxDistance = 0;
+            for (const flower of flowers) {
+                if (flower.distance > maxDistance) {
+                    maxDistance = flower.distance;
+                }
+            }
+            // 留出边距，确保最远的花朵也能显示
+            const margin = 50;
+            const availableSize = (canvas.width / 2) - margin;
+            return availableSize / maxDistance;
+        }
+
+        // 绘制场景
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 计算合适的缩放比例
+            const scale = calculateScale();
+
+            // 绘制背景网格
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+
+            // 绘制螺旋路径
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i < 100; i++) {
+                const theta = i * 0.1;
+                const r = CONFIG.SPIRAL_B * theta * scale;
+                const x = canvas.width / 2 + r * Math.cos(theta);
+                const y = canvas.height / 2 + r * Math.sin(theta);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // 绘制花朵
+            for (const flower of flowers) {
+                drawFlower(flower, canvas.width / 2, canvas.height / 2, scale);
+            }
+        }
+
+        // 更新花朵信息显示
+        function updateFlowerInfo() {
+            const container = document.getElementById('flowerInfo');
+            container.innerHTML = '';
+            for (const flower of flowers) {
+                const item = document.createElement('div');
+                item.className = 'flower-item';
+                const dot = document.createElement('div');
+                dot.className = 'flower-dot';
+                dot.id = `dot-${flower.index}`;
+                const text = document.createElement('span');
+                text.id = `info-${flower.index}`;
+                text.textContent = `花${flower.index}: ${flower.brightness}`;
+                item.appendChild(dot);
+                item.appendChild(text);
+                container.appendChild(item);
+            }
+        }
+
+        // 更新花朵信息颜色
+        function updateFlowerInfoColors() {
+            for (const flower of flowers) {
+                const dot = document.getElementById(`dot-${flower.index}`);
+                const text = document.getElementById(`info-${flower.index}`);
+                if (dot && text) {
+                    const alpha = flower.brightness / 255;
+                    dot.style.background = `rgba(255, 255, 200, ${alpha})`;
+                    dot.style.boxShadow = `0 0 5px rgba(255, 255, 200, ${alpha})`;
+                    text.textContent = `花${flower.index}: ${Math.round(flower.brightness)}`;
+                }
+            }
+        }
+
+        // 自动演示模式
+        let autoTime = 0;
+        function updateAutoMode() {
+            if (!isAutoMode) return;
+            
+            autoTime += 0.02;
+            // 使用正弦波模拟UDP数据包大小变化
+            const sinValue = (Math.sin(autoTime) + 1) / 2;  // 0-1
+            const udpSize = Math.floor(sinValue * CONFIG.UDP_PACKET_SIZE_MAX);
+            
+            document.getElementById('udpSizeSlider').value = udpSize;
+            document.getElementById('udpSizeValue').textContent = udpSize;
+            updateUDPPacketSize(udpSize);
+        }
+
+        // 动画循环
+        function animate() {
+            if (isRunning) {
+                updateAutoMode();
+                updateFlowers();
+                updateFlowerInfoColors();
+                draw();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // ============ 事件绑定 ============
+        document.getElementById('udpSizeSlider').addEventListener('input', (e) => {
+            const size = parseInt(e.target.value);
+            document.getElementById('udpSizeValue').textContent = size;
+            updateUDPPacketSize(size);
+        });
+
+        document.getElementById('spiralSpeed').addEventListener('input', (e) => {
+            spiralDelayFactor = parseInt(e.target.value) / 100;
+            document.getElementById('spiralSpeedValue').textContent = spiralDelayFactor.toFixed(2);
+        });
+
+        document.getElementById('smoothing').addEventListener('input', (e) => {
+            brightnessSmoothing = parseInt(e.target.value) / 100;
+            document.getElementById('smoothingValue').textContent = brightnessSmoothing.toFixed(2);
+        });
+
+        document.getElementById('toggleBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            document.getElementById('toggleBtn').textContent = isRunning ? '暂停' : '继续';
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            startTime = Date.now();
+            udpPacketSize = 512;
+            targetCenterBrightness = CONFIG.BRIGHTNESS_MIN + (512 / CONFIG.UDP_PACKET_SIZE_MAX) * (CONFIG.BRIGHTNESS_MAX - CONFIG.BRIGHTNESS_MIN);
+            centerBrightness = targetCenterBrightness;
+            spiralDelayFactor = CONFIG.SPIRAL_DELAY_FACTOR;
+            brightnessSmoothing = CONFIG.BRIGHTNESS_SMOOTHING;
+            
+            // 重置历史记录
+            brightnessHistory.fill(CONFIG.BRIGHTNESS_MIN);
+            historyIndex = 0;
+            
+            document.getElementById('udpSizeSlider').value = 512;
+            document.getElementById('udpSizeValue').textContent = '512';
+            document.getElementById('centerSlider').value = Math.round(targetCenterBrightness);
+            document.getElementById('centerValue').textContent = Math.round(targetCenterBrightness);
+            document.getElementById('spiralSpeed').value = 30;
+            document.getElementById('spiralSpeedValue').textContent = '0.30';
+            document.getElementById('smoothing').value = 30;
+            document.getElementById('smoothingValue').textContent = '0.30';
+        });
+
+        document.getElementById('autoBtn').addEventListener('click', () => {
+            isAutoMode = !isAutoMode;
+            const btn = document.getElementById('autoBtn');
+            btn.textContent = isAutoMode ? '停止演示' : '自动演示';
+            btn.classList.toggle('active', isAutoMode);
+            
+            if (isAutoMode) {
+                autoTime = 0;
+                document.getElementById('udpSizeSlider').disabled = true;
+            } else {
+                document.getElementById('udpSizeSlider').disabled = false;
+            }
+        });
+
+        // ============ 启动 ============
+        initFlowers();
+        updateUDPPacketSize(512);  // 初始化UDP数据包大小
+        animate();
+    </script>
+</body>
+</html>
