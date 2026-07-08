@@ -419,12 +419,7 @@
                 const delayIndex = Math.floor(distanceRatio * maxDelayIndex * spiralDelayFactor * 10);
                 
                 // 从历史记录中获取延迟后的亮度
-                let delayedIndex = historyIndex - 1 - delayIndex;
-                // 处理循环索引
-                while (delayedIndex < 0) {
-                    delayedIndex += BRIGHTNESS_HISTORY_SIZE;
-                }
-                delayedIndex = delayedIndex % BRIGHTNESS_HISTORY_SIZE;
+                const delayedIndex = ((historyIndex - 1 - delayIndex) % BRIGHTNESS_HISTORY_SIZE + BRIGHTNESS_HISTORY_SIZE) % BRIGHTNESS_HISTORY_SIZE;
                 
                 // 获取延迟后的中心花亮度
                 const delayedBrightness = brightnessHistory[delayedIndex];

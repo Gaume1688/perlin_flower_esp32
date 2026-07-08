@@ -236,11 +236,7 @@ uint8_t calculateFlowerBrightness(int index, float t) {
         int delayIndex = (int)(distance * SPIRAL_DELAY_FACTOR * 100);
         
         // 从历史记录中获取延迟后的亮度
-        int delayedIndex = historyIndex - 1 - delayIndex;
-        if (delayedIndex < 0) {
-            delayedIndex += BRIGHTNESS_HISTORY_SIZE;
-        }
-        delayedIndex = delayedIndex % BRIGHTNESS_HISTORY_SIZE;
+        int delayedIndex = ((historyIndex - 1 - delayIndex) % BRIGHTNESS_HISTORY_SIZE + BRIGHTNESS_HISTORY_SIZE) % BRIGHTNESS_HISTORY_SIZE;
         
         // 获取延迟后的中心花亮度
         uint8_t delayedBrightness = brightnessHistory[delayedIndex];
@@ -257,16 +253,6 @@ uint8_t calculateFlowerBrightness(int index, float t) {
     
     // 限制范围
     return constrain(brightness, BRIGHTNESS_MIN, BRIGHTNESS_MAX);
-}
-
-// ============ 更新中心花亮度（由UDP数据控制）============
-void updateCenterBrightness(uint8_t newBrightness) {
-    targetCenterBrightness = constrain(newBrightness, BRIGHTNESS_MIN, BRIGHTNESS_MAX);
-}
-
-// ============ 获取中心花当前亮度 ============
-uint8_t getCenterBrightness() {
-    return centerBrightness;
 }
 
 // ============ 调试信息输出 ============

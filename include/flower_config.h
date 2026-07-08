@@ -84,10 +84,6 @@ struct Flower {
 
 // ============ 螺旋传播参数 ============
 
-// 螺旋传播速度（距离单位/秒）
-// 值越大，波浪传播越快
-#define SPIRAL_PROPAGATION_SPEED 3.0f
-
 // 螺旋传播延迟系数（每单位距离的延迟秒数）
 #define SPIRAL_DELAY_FACTOR 0.15f
 
@@ -101,10 +97,6 @@ struct Flower {
 
 // 呼吸周期（秒）
 #define BREATH_PERIOD 3.0f
-
-// 呼吸效果基础强度 (0.0 - 1.0)
-// 这是UDP数据为0时的最小呼吸强度
-#define BREATH_BASE_INTENSITY 0.15f
 
 // 呼吸效果最大强度 (0.0 - 1.0)
 // 这是UDP数据最大时的呼吸强度
@@ -121,12 +113,6 @@ void initFlowerPositions();
 
 // 计算单朵花的亮度
 uint8_t calculateFlowerBrightness(int index, float t);
-
-// 更新中心花亮度（由UDP数据控制）
-void updateCenterBrightness(uint8_t newBrightness);
-
-// 获取中心花当前亮度
-uint8_t getCenterBrightness();
 
 // 调试信息输出
 void printDebugInfo(float t);
