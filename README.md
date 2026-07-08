@@ -1,21 +1,22 @@
-# 柏林噪声LED花海律动 - ESP32 PlatformIO项目
+# UDP控制LED花海律动 - ESP32 PlatformIO项目
 
 ## 项目简介
 
-本项目使用柏林噪声(Perlin Noise)算法驱动10个白光LED，创造出自然、永不重复的律动效果。花朵按螺旋排列，中心花直接由噪声驱动，外围花朵的亮度变化从中心向外传播，形成类似"风吹过花海"的波浪效果。
+本项目实现了一个UDP控制的LED花海律动系统。10个白光LED按螺旋排列，中心花亮度由UDP数据包大小控制，外围花朵的亮度变化从中心向外传播，形成波浪效果。
 
 ## 效果特点
 
-- **自然律动**：柏林噪声产生连续、平滑、永不重复的亮度变化
+- **UDP控制**：中心花亮度由UDP数据包大小（0-1023字节）实时控制
 - **螺旋排列**：使用黄金角(137.5°)排列，模拟自然界向日葵种子的分布
-- **波浪传播**：亮度变化从中心向外围传播，形成视觉上的波浪效果
-- **呼吸效果**：全局缓慢的亮度起伏，增加生命感
+- **波浪传播**：亮度变化从中心向外围延迟传播，形成视觉上的波浪效果
+- **动态呼吸**：呼吸效果强度随UDP值变化，数据越大呼吸效果越弱
 
 ## 项目结构
 
 ```
 perlin_flower_esp32/
 ├── platformio.ini       # PlatformIO配置文件
+├── index.html           # Web可视化界面（模拟UDP控制）
 ├── src/
 │   └── main.cpp         # 主程序
 ├── include/
@@ -66,12 +67,33 @@ perlin_flower_esp32/
 4. 点击 → 按钮上传，或按 `Ctrl+Alt+U`
 5. 打开串口监视器：点击 🔌 按钮，或按 `Ctrl+Alt+S`
 
-### 依赖库
+### WiFi配置
 
-项目依赖已在 `platformio.ini` 中配置：
-- FastLED ^3.5.0
+修改 [`include/flower_config.h`](include/flower_config.h) 中的WiFi配置：
 
-PlatformIO会自动下载所需库，无需手动安装。
+```c
+#define WIFI_SSID "Your_SSID"
+#define WIFI_PASSWORD "Your_PASSWORD"
+```
+
+## UDP控制协议
+
+| 参数 | 值 |
+|------|-----|
+| 端口 | 4210 |
+| 数据包大小范围 | 0-1023 字节 |
+| 映射亮度范围 | 20-255 |
+
+发送UDP数据包到ESP32的IP地址和端口4210，数据包大小会被映射为中心花的亮度值。
+
+## Web可视化界面
+
+打开 [`index.html`](index.html) 可以在浏览器中模拟UDP控制效果：
+
+- 滑块调节模拟UDP数据包大小
+- 实时可视化花朵亮度和螺旋排列
+- 自动演示模式
+- 可调螺旋传播速度和亮度平滑系数
 
 ## 参数调优
 
@@ -79,13 +101,14 @@ PlatformIO会自动下载所需库，无需手动安装。
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `NOISE_SCALE` | 500 | 噪声变化速度，值越大变化越快 |
-| `PROPAGATION_SPEED` | 2.0 | 波浪传播速度 |
-| `WAVE_SPEED` | 3.0 | 波浪速度 |
-| `WAVE_LENGTH` | 5.0 | 波浪空间周期 |
-| `WAVE_MIX` | 0.3 | 波浪混合比例 (0-1) |
-| `BREATH_PERIOD` | 4.0 | 呼吸周期（秒） |
-| `BREATH_DEPTH` | 0.2 | 呼吸深度 (0-1) |
+| `UDP_PACKET_SIZE_MAX` | 1023 | UDP数据包最大字节数 |
+| `SPIRAL_B` | 1.5 | 螺旋间距系数 |
+| `GOLDEN_ANGLE` | 2.399 | 黄金角（弧度）≈137.5° |
+| `SPIRAL_DELAY_FACTOR` | 0.15 | 螺旋传播延迟系数（秒/距离单位） |
+| `BRIGHTNESS_SMOOTHING` | 0.3 | 亮度平滑系数 (0-1) |
+| `BREATH_PERIOD` | 3.0 | 呼吸周期（秒） |
+| `BREATH_MAX_INTENSITY` | 0.8 | 呼吸最大强度 (0-1) |
+| `BREATH_PHASE_OFFSET` | 0.5 | 每朵花相位偏移（弧度） |
 | `BRIGHTNESS_MIN` | 20 | 最小亮度 |
 | `BRIGHTNESS_MAX` | 255 | 最大亮度 |
 
@@ -97,19 +120,16 @@ PlatformIO会自动下载所需库，无需手动安装。
 ```
 === Debug Info ===
 Time: 10.50s
+Center brightness: 128
+Target center brightness: 130
+WiFi status: Connected
 Flower 0: brightness=128, distance=0.00
-Flower 1: brightness=135, distance=3.60
+Flower 1: brightness=125, distance=3.60
 ...
 ================
 ```
 
 ## 算法说明
-
-### 柏林噪声 (Perlin Noise)
-
-柏林噪声是一种梯度噪声，产生连续、平滑的随机值。与纯随机数不同，柏林噪声的变化是渐进的，非常适合模拟自然现象。
-
-FastLED 库提供 `inoise8()` 函数，输入3D坐标，返回 -128 到 127 的噪声值。
 
 ### 螺旋坐标计算
 
@@ -121,25 +141,54 @@ x(i) = r × cos(θ)
 y(i) = r × sin(θ)
 ```
 
-### 传播效果
+### 亮度平滑
 
-外围花朵的亮度变化基于中心花的延迟版本：
+使用指数平滑算法，让亮度变化更柔和：
 ```
-delayedTime = currentTime - distance / propagationSpeed
+centerBrightness = centerBrightness × (1 - α) + targetBrightness × α
 ```
+其中 α 为平滑系数 `BRIGHTNESS_SMOOTHING`。
+
+### 螺旋传播
+
+使用亮度历史记录实现延迟传播：
+- 每10ms记录一次中心花亮度到历史数组
+- 外围花朵根据距离从历史记录中读取延迟后的亮度
+- 距离越远，延迟越大
+
+```
+delayIndex = distance × SPIRAL_DELAY_FACTOR × 100
+delayedBrightness = history[historyIndex - delayIndex]
+```
+
+### 呼吸效果
+
+呼吸强度随UDP值动态变化：
+```
+brightnessRatio = centerBrightness / BRIGHTNESS_MAX
+breathIntensity = BREATH_MAX_INTENSITY × (1 - brightnessRatio)
+breathFactor = 1 - breathIntensity + breathValue × breathIntensity
+```
+
+- UDP值越大，呼吸效果越弱
+- UDP值达到最大时，呼吸效果完全消失
 
 ### 综合亮度计算
 
 ```
-最终亮度 = (噪声亮度 × 0.7 + 波浪亮度 × 0.3) × 呼吸因子
+最终亮度 = 基础亮度 × 呼吸因子
 ```
+
+其中：
+- 中心花：基础亮度 = 平滑后的UDP控制亮度
+- 外围花：基础亮度 = 延迟后的中心花亮度 × 距离衰减
 
 ## 扩展建议
 
 1. **更多花朵**：修改 `NUM_FLOWERS` 和 `LED_PINS` 数组
-2. **RGB效果**：替换白光LED为WS2812B，使用FastLED的颜色功能
-3. **音乐同步**：添加麦克风模块，将声音强度映射到亮度
-4. **无线控制**：使用ESP32的WiFi/蓝牙功能，添加手机APP控制
+2. **RGB效果**：替换白光LED为WS2812B，添加颜色控制
+3. **音乐同步**：添加麦克风模块，将声音强度映射到UDP数据包大小
+4. **多点控制**：添加多个UDP控制源，实现更复杂的交互效果
 
 ## 许可证
 
