@@ -51,8 +51,8 @@ const int LED_PINS[NUM_FLOWERS] = {
 #define UDP_PORT 4210
 
 // UDP数据包大小（用于控制中心花亮度）
-// 数据包大小范围: 0-1024 字节，映射到亮度 0-255
-#define UDP_PACKET_SIZE_MAX 1024
+// 数据包大小范围: 0-1023 字节，映射到亮度 0-255
+#define UDP_PACKET_SIZE_MAX 1023
 
 // ============ 螺旋排列参数 ============
 

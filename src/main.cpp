@@ -15,7 +15,7 @@
  * 网络要求：
  * - WiFi连接
  * - UDP数据包发送到指定端口
- * - 数据包大小 (0-1024字节) 映射到中心花亮度 (0-255)
+ * - 数据包大小 (0-1023字节) 映射到中心花亮度 (0-255)
  */
 
 #include <Arduino.h>
@@ -137,7 +137,7 @@ void handleUDP() {
             udpPacketBuffer[len] = '\0';
             
             // 根据数据包大小计算中心花亮度
-            // 数据包大小范围: 0-1024 字节 -> 亮度: BRIGHTNESS_MIN-BRIGHTNESS_MAX
+            // 数据包大小范围: 0-1023 字节 -> 亮度: BRIGHTNESS_MIN-BRIGHTNESS_MAX
             targetCenterBrightness = map(len, 0, UDP_PACKET_SIZE_MAX, BRIGHTNESS_MIN, BRIGHTNESS_MAX);
             
             Serial.print("UDP packet received, size: ");

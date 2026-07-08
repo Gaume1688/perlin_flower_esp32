@@ -221,9 +221,9 @@
 
         <div class="controls">
             <div class="control-group">
-                <label>📡 模拟UDP数据包大小 (0-1024字节)</label>
+                <label>📡 模拟UDP数据包大小 (0-1023字节)</label>
                 <div class="slider-container">
-                    <input type="range" id="udpSizeSlider" min="0" max="1024" value="512">
+                    <input type="range" id="udpSizeSlider" min="0" max="1023" value="512">
                     <span class="value-display" id="udpSizeValue">512</span>
                 </div>
             </div>
@@ -262,12 +262,12 @@
                 <h3>算法说明</h3>
                 <p>
                     • 中心花亮度由模拟UDP数据包大小控制<br>
-                    • 数据包大小 (0-1024字节) 映射到亮度 (20-255)<br>
+                    • 数据包大小 (0-1023字节) 映射到亮度 (20-255)<br>
                     • 其余花朵按螺旋方式跟随中心花变化<br>
                     • 距离越远，延迟越大，形成波浪传播效果<br>
                     • 所有花朵保持呼吸灯效果<br>
                     • <strong>呼吸强度随UDP数据变化：数据越大，呼吸效果越弱</strong><br>
-                    • <strong>当UDP值达到最大(1024)时，呼吸效果完全消失</strong>
+                    • <strong>当UDP值达到最大(1023)时，呼吸效果完全消失</strong>
                 </p>
             </div>
 
@@ -289,7 +289,7 @@
             GOLDEN_ANGLE: 2.399,
             BRIGHTNESS_MIN: 20,
             BRIGHTNESS_MAX: 255,
-            UDP_PACKET_SIZE_MAX: 1024,
+            UDP_PACKET_SIZE_MAX: 1023,
             SPIRAL_DELAY_FACTOR: 0.15,  // 每单位距离的延迟秒数
             BRIGHTNESS_SMOOTHING: 0.3,   // 亮度平滑系数
             HISTORY_UPDATE_INTERVAL: 10, // 历史记录更新间隔 (ms)
